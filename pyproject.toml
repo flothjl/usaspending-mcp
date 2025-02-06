@@ -1,0 +1,10 @@
+[project]
+name = "goostr"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.2.1",
+    "nostr-sdk>=0.39.0",
+]
