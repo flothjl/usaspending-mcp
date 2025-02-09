@@ -1,10 +1,13 @@
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
+import httpx
 import mcp.types as mcp_types
 from mcp.server.fastmcp import FastMCP
+from mcp.shared.exceptions import McpError
 from nostr_sdk import Client, EventBuilder, Keys, LogLevel, NostrSigner, init_logger
 from pydantic import AnyUrl
 
@@ -61,12 +64,10 @@ class AgencyData:
 
 
 @mcp.tool(
-    name="GetGovSpendingAwards",
-    description="Get government spending awards for a fiscal year for a given agency id",
+    name="UsaSpendingGoveGetSpendingAwardsByAgencyId",
+    description="Get government spending awards from usaspending.gov for a fiscal year for a given agency id",
 )
-async def get_gov_spending_by_fiscal_year(
-    year: str, agency_id: str
-) -> Dict[str, Any] | None:
+async def get_gov_spending_by_fiscal_year(year: str, agency_id: str) -> Dict[str, Any]:
     """Get government spending awards from usaspending.gov for a given agency id
 
     Args:
@@ -79,29 +80,112 @@ async def get_gov_spending_by_fiscal_year(
         "filters": {"fy": str(year), "period": "12", "agency": agency_id},
     }
     try:
-        response = await async_http_post(URL, data=BODY)
+        response = await async_http_post(URL, json=BODY)
         return response.json()
-    except Exception as e:
-        print(e)
-        return None
+    except httpx.HTTPStatusError as e:
+        raise McpError(
+            mcp_types.ErrorData(
+                code=mcp_types.INTERNAL_ERROR,
+                message=f"Received {e.response.status_code} from usaspending.gov while requesting {e.request.url}",
+            )
+        )
+    except httpx.RequestError as e:
+        raise McpError(
+            mcp_types.ErrorData(
+                code=mcp_types.INTERNAL_ERROR,
+                message=f"Error while requesting {e.request.url}. Http Error: {e!r}",
+            )
+        )
 
 
 @mcp.tool(
-    name="GetAwardInfo", description="Get Details on a given Federal Spending award"
+    name="UsaSpendingGovGetAwardInfoByAwardId",
+    description="Get award details for a given award id from usaspending.gov",
 )
 async def get_award_info(generated_unique_award_id: str) -> Dict[str, Any] | None:
     BASE_URL = "https://api.usaspending.gov/api/v2/awards/"
-    URL = urljoin(BASE_URL, generated_unique_award_id)
+    URL = urljoin(BASE_URL, f"{generated_unique_award_id}")
     try:
         response = await async_http_get(URL)
         return response.json()
-    except Exception as e:
-        print(e)
-        return None
+    except httpx.HTTPStatusError as e:
+        raise McpError(
+            mcp_types.ErrorData(
+                code=mcp_types.INTERNAL_ERROR,
+                message=f"Received {e.response.status_code} from usaspending.gov while requesting {e.request.url}",
+            )
+        )
+    except httpx.RequestError as e:
+        raise McpError(
+            mcp_types.ErrorData(
+                code=mcp_types.INTERNAL_ERROR,
+                message=f"Error while requesting {e.request.url}. Http Error: {e!r}",
+            )
+        )
 
 
 @mcp.tool(
-    name="GetAgencies",
+    name="UsaSpendingGovSearchByKeywords",
+    description="Search usaspending.gov for details of spending awards by comma separated keywords",
+)
+async def search_award_by_keyword(keyword: str, year: int) -> Dict[str, Any] | None:
+    URL = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
+
+    start_date = datetime(year=year, month=1, day=1).strftime("%Y-%m-%d")
+    end_date = datetime(year=year, month=12, day=31).strftime("%Y-%m-%d")
+
+    data = {
+        "filters": {
+            "keywords": keyword.replace(" ", "").split(","),
+            "time_period": [{"start_date": start_date, "end_date": end_date}],
+            "award_type_codes": ["A", "B", "C", "D"],
+        },
+        "fields": [
+            "Award ID",
+            "Recipient Name",
+            "Award Amount",
+            "Total Outlays",
+            "Description",
+            "Contract Award Type",
+            "def_codes",
+            "COVID-19 Obligations",
+            "COVID-19 Outlays",
+            "Infrastructure Obligations",
+            "Infrastructure Outlays",
+            "Awarding Agency",
+            "Awarding Sub Agency",
+            "Start Date",
+            "End Date",
+            "recipient_id",
+            "prime_award_recipient_id",
+        ],
+        "page": 1,
+        "limit": 20,
+        "sort": "Award Amount",
+        "order": "desc",
+        "subawards": False,
+    }
+    try:
+        response = await async_http_post(URL, json=data)
+        return response.json()
+    except httpx.HTTPStatusError as e:
+        raise McpError(
+            mcp_types.ErrorData(
+                code=mcp_types.INTERNAL_ERROR,
+                message=f"Received {e.response.status_code} from usaspending.gov while requesting {e.request.url}",
+            )
+        )
+    except httpx.RequestError as e:
+        raise McpError(
+            mcp_types.ErrorData(
+                code=mcp_types.INTERNAL_ERROR,
+                message=f"Error while requesting {e.request.url}. Http Error: {e!r}",
+            )
+        )
+
+
+@mcp.tool(
+    name="UsaSpendingGovGetAgencies",
     description="Get a list of all united states federal agencies and associated codes and IDs",
 )
 async def get_us_agencies() -> Dict[str, Any] | None:
@@ -114,19 +198,17 @@ async def get_us_agencies() -> Dict[str, Any] | None:
     try:
         response = await async_http_get(URL)
         return response.json()
-        # return [AgencyData.from_api(i) for i in response.json().get("results")]
-    except Exception as e:
-        print(e)
-        return None
-
-
-# @mcp.list_resources()
-# async def get_resources() -> List[mcp_types.Resource]:
-#     return [
-#         mcp_types.Resource(
-#             uri= AnyUrl("agency://all"),
-#             name="All United States Agencies",
-#             description="Get a list of all United States federal agencies and their codes and IDs",
-#             mimeType="text/plain",
-#         )
-#     ]
+    except httpx.HTTPStatusError as e:
+        raise McpError(
+            mcp_types.ErrorData(
+                code=mcp_types.INTERNAL_ERROR,
+                message=f"Received {e.response.status_code} from usaspending.gov while requesting {e.request.url}",
+            )
+        )
+    except httpx.RequestError as e:
+        raise McpError(
+            mcp_types.ErrorData(
+                code=mcp_types.INTERNAL_ERROR,
+                message=f"Error while requesting {e.request.url}. Http Error: {e!r}",
+            )
+        )
