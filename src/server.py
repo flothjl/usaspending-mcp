@@ -68,7 +68,7 @@ class AwardsByAgencyAndFyArgs(BaseModel):
     agency_id: str
 
 
-@mcp.tool(name="UsaSpendingGoveGetSpendingAwardsByAgencyId")
+@mcp.tool(name="GetSpendingAwardsByAgencyId")
 async def get_gov_spending_by_fiscal_year(
     args: AwardsByAgencyAndFyArgs,
 ) -> Dict[str, Any]:
@@ -106,10 +106,11 @@ class AwardDetailArgs(BaseModel):
     generated_unique_award_id: str
 
 
-@mcp.tool(name="UsaSpendingGovGetAwardInfoByAwardId")
+@mcp.tool(name="GetAwardInfoByAwardId")
 async def get_award_info(args: AwardDetailArgs) -> Dict[str, Any] | None:
     """Get award details for a given award id from usaspending.gov
-    - Use this when you have a generated unique award id from another tool and want to get details on that specific award
+    - Use this when you have a generated award id from another tool and want to get details on that specific award
+    - Only use this with award IDs. Generally these award IDs will come from GetSpendingAwardsByAgencyID
 
     Args:
         generated_unique_award_id: the unique id associated to the award
@@ -141,11 +142,12 @@ class KeywordSearchArgs(BaseModel):
     year: int
 
 
-@mcp.tool(name="UsaSpendingGovSearchByKeywords")
+@mcp.tool(name="SearchByKeywords")
 async def search_award_by_keyword(args: KeywordSearchArgs) -> Dict[str, Any] | None:
     """
     Search USASpending.gove for details of spending awards.
     - You should only use this tool when you want to do a broad search for awards by keyword
+    - Use this tool when you are looking up broad keywords.
     - Returns 20 results ordered by Award Amount
     """
 
@@ -204,7 +206,7 @@ async def search_award_by_keyword(args: KeywordSearchArgs) -> Dict[str, Any] | N
         )
 
 
-@mcp.tool(name="UsaSpendingGovGetAgencies")
+@mcp.tool(name="GetAgencies")
 async def get_us_agencies() -> Dict[str, Any] | None:
     """Get US agencies and their ids and codes
     - Use this when you want to get a list of all the us agencies and their metadata
