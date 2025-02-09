@@ -9,7 +9,7 @@ import mcp.types as mcp_types
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.exceptions import McpError
 from nostr_sdk import Client, EventBuilder, Keys, LogLevel, NostrSigner, init_logger
-from pydantic import AnyUrl
+from pydantic import AnyUrl, BaseModel
 
 from .util import async_http_get, async_http_post
 
@@ -63,13 +63,17 @@ class AgencyData:
 #     return {"npub": keys.public_key().to_bech32(), "note_id": output.id.to_bech32()}
 
 
-@mcp.tool(
-    name="UsaSpendingGoveGetSpendingAwardsByAgencyId",
-    description="Get government spending awards from usaspending.gov for a fiscal year for a given agency id",
-)
-async def get_gov_spending_by_fiscal_year(year: str, agency_id: str) -> Dict[str, Any]:
-    """Get government spending awards from usaspending.gov for a given agency id
+class AwardsByAgencyAndFyArgs(BaseModel):
+    year: str
+    agency_id: str
 
+
+@mcp.tool(name="UsaSpendingGoveGetSpendingAwardsByAgencyId")
+async def get_gov_spending_by_fiscal_year(
+    args: AwardsByAgencyAndFyArgs,
+) -> Dict[str, Any]:
+    """Get government spending awards from usaspending.gov for a fiscal year for a given agency id
+    - Use this tool when you have an agency id and want to get awards for a given year
     Args:
         year: fiscal year for which you want data
         toptier_agency: toptier agency code
@@ -77,7 +81,7 @@ async def get_gov_spending_by_fiscal_year(year: str, agency_id: str) -> Dict[str
     URL = "https://api.usaspending.gov/api/v2/spending/"
     BODY = {
         "type": "award",
-        "filters": {"fy": str(year), "period": "12", "agency": agency_id},
+        "filters": {"fy": args.year, "period": "12", "agency": args.agency_id},
     }
     try:
         response = await async_http_post(URL, json=BODY)
@@ -98,13 +102,21 @@ async def get_gov_spending_by_fiscal_year(year: str, agency_id: str) -> Dict[str
         )
 
 
-@mcp.tool(
-    name="UsaSpendingGovGetAwardInfoByAwardId",
-    description="Get award details for a given award id from usaspending.gov",
-)
-async def get_award_info(generated_unique_award_id: str) -> Dict[str, Any] | None:
+class AwardDetailArgs(BaseModel):
+    generated_unique_award_id: str
+
+
+@mcp.tool(name="UsaSpendingGovGetAwardInfoByAwardId")
+async def get_award_info(args: AwardDetailArgs) -> Dict[str, Any] | None:
+    """Get award details for a given award id from usaspending.gov
+    - Use this when you have a generated unique award id from another tool and want to get details on that specific award
+
+    Args:
+        generated_unique_award_id: the unique id associated to the award
+    """
+
     BASE_URL = "https://api.usaspending.gov/api/v2/awards/"
-    URL = urljoin(BASE_URL, f"{generated_unique_award_id}")
+    URL = urljoin(BASE_URL, f"{args.generated_unique_award_id}/")
     try:
         response = await async_http_get(URL)
         return response.json()
@@ -124,19 +136,27 @@ async def get_award_info(generated_unique_award_id: str) -> Dict[str, Any] | Non
         )
 
 
-@mcp.tool(
-    name="UsaSpendingGovSearchByKeywords",
-    description="Search usaspending.gov for details of spending awards by comma separated keywords",
-)
-async def search_award_by_keyword(keyword: str, year: int) -> Dict[str, Any] | None:
+class KeywordSearchArgs(BaseModel):
+    keywords: List[str]
+    year: int
+
+
+@mcp.tool(name="UsaSpendingGovSearchByKeywords")
+async def search_award_by_keyword(args: KeywordSearchArgs) -> Dict[str, Any] | None:
+    """
+    Search USASpending.gove for details of spending awards.
+    - You should only use this tool when you want to do a broad search for awards by keyword
+    - Returns 20 results ordered by Award Amount
+    """
+
     URL = "https://api.usaspending.gov/api/v2/search/spending_by_award/"
 
-    start_date = datetime(year=year, month=1, day=1).strftime("%Y-%m-%d")
-    end_date = datetime(year=year, month=12, day=31).strftime("%Y-%m-%d")
+    start_date = datetime(year=args.year, month=1, day=1).strftime("%Y-%m-%d")
+    end_date = datetime(year=args.year, month=12, day=31).strftime("%Y-%m-%d")
 
     data = {
         "filters": {
-            "keywords": keyword.replace(" ", "").split(","),
+            "keywords": args.keywords,
             "time_period": [{"start_date": start_date, "end_date": end_date}],
             "award_type_codes": ["A", "B", "C", "D"],
         },
@@ -184,12 +204,10 @@ async def search_award_by_keyword(keyword: str, year: int) -> Dict[str, Any] | N
         )
 
 
-@mcp.tool(
-    name="UsaSpendingGovGetAgencies",
-    description="Get a list of all united states federal agencies and associated codes and IDs",
-)
+@mcp.tool(name="UsaSpendingGovGetAgencies")
 async def get_us_agencies() -> Dict[str, Any] | None:
     """Get US agencies and their ids and codes
+    - Use this when you want to get a list of all the us agencies and their metadata
 
     Usage:
         get_us_agencies()

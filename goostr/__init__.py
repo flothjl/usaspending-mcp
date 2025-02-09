@@ -1,4 +1,5 @@
 import argparse
+
 from .server import mcp
 
 
@@ -13,3 +14,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+__all__ = ["main", "server"]
