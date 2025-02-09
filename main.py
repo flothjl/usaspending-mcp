@@ -1,3 +1,3 @@
-import goostr
+import src
 
-goostr.main()
+src.main()
