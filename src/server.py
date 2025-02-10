@@ -1,5 +1,3 @@
-import os
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
@@ -8,59 +6,11 @@ import httpx
 import mcp.types as mcp_types
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.exceptions import McpError
-from nostr_sdk import Client, EventBuilder, Keys, LogLevel, NostrSigner, init_logger
-from pydantic import AnyUrl, BaseModel
+from pydantic import BaseModel, Field
 
-from .util import async_http_get, async_http_post
+from util import async_http_get, async_http_post
 
-# Initialize FastMCP server
-mcp = FastMCP("goostr")
-
-GOOSTR_NSEC = os.getenv("GOOSTR_NSEC")
-
-
-@dataclass
-class AgencyData:
-    agency_id: Optional[int]
-    toptier_code: Optional[str]
-    abbreviation: Optional[str]
-    agency_name: Optional[str]
-    congressional_justification_url: Optional[str]
-
-    @classmethod
-    def from_api(cls, data: dict):
-        return cls(
-            agency_id=data.get("agency_id"),
-            toptier_code=data.get("toptier_code"),
-            abbreviation=data.get("abbreviation"),
-            agency_name=data.get("agency_name"),
-            congressional_justification_url=data.get("congressional_justification_url"),
-        )
-
-
-# @mcp.tool(name="PublishNote", description="Publish a Kind 1 Nostr note")
-# async def publish_note(note: str) -> Dict[str, str]:
-#     """Publish a Kind 1 nostr EventBuilder
-#
-#     Args:
-#         note: Note content
-#     """
-#
-#     init_logger(LogLevel.INFO)
-#
-#     keys = Keys.generate()
-#     signer = NostrSigner.keys(keys)
-#     client = Client(signer)
-#
-#     await client.add_relay("wss://relay.damus.io")
-#     await client.add_relay("wss://nos.lol")
-#
-#     await client.connect()
-#
-#     builder = EventBuilder.text_note(note)
-#     output = await client.send_event_builder(builder)
-#
-#     return {"npub": keys.public_key().to_bech32(), "note_id": output.id.to_bech32()}
+mcp = FastMCP("usaspending")
 
 
 class AwardsByAgencyAndFyArgs(BaseModel):
@@ -142,8 +92,25 @@ class KeywordSearchArgs(BaseModel):
     year: int
 
 
+class KeywordSearchResponse(BaseModel):
+    internal_id: Optional[int]
+    description: Optional[str] = Field(alias="Description")
+    award_id: Optional[str] = Field(alias="Award ID")
+    recipient_name: str = Field(alias="Recipient Name")
+    award_amount: Optional[float] = Field(alias="Award Amount")
+    total_outlays: Optional[float] = Field(alias="Total Outlays")
+    awarding_agency: Optional[str] = Field(alias="Awarding Agency")
+    awarding_subagency: Optional[str] = Field(alias="Awarding Sub Agency")
+    start_date: Optional[str] = Field(alias="Start Date")
+    end_date: Optional[str] = Field(alias="End Date")
+    awarding_agency_id: Optional[int] = Field(alias="awarding_agency_id")
+    generated_unique_award_id: Optional[str] = Field(alias="generated_internal_id")
+
+
 @mcp.tool(name="SearchByKeywords")
-async def search_award_by_keyword(args: KeywordSearchArgs) -> Dict[str, Any] | None:
+async def search_award_by_keyword(
+    args: KeywordSearchArgs,
+) -> List[KeywordSearchResponse]:
     """
     Search USASpending.gove for details of spending awards.
     - You should only use this tool when you want to do a broad search for awards by keyword
@@ -189,7 +156,8 @@ async def search_award_by_keyword(args: KeywordSearchArgs) -> Dict[str, Any] | N
     }
     try:
         response = await async_http_post(URL, json=data)
-        return response.json()
+        mapped = response.json().get("results", [])
+        return [KeywordSearchResponse(**i) for i in mapped]
     except httpx.HTTPStatusError as e:
         raise McpError(
             mcp_types.ErrorData(
@@ -232,3 +200,7 @@ async def get_us_agencies() -> Dict[str, Any] | None:
                 message=f"Error while requesting {e.request.url}. Http Error: {e!r}",
             )
         )
+
+
+if __name__ == "__main__":
+    mcp.run()
