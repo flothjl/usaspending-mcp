@@ -58,10 +58,10 @@ class AwardDetailArgs(BaseModel):
     )
 
 
-@mcp.tool(name="GetAwardInfoByAwardId")
+@mcp.tool(name="GetAwardInfoByGeneratedUniqueAwardId")
 async def get_award_info(args: AwardDetailArgs) -> Dict[str, Any] | None:
     """Get award details for a given award id from usaspending.gov
-    - Use this when you have a generated award id from another tool and want to get details on that specific award
+    - Use this when you have a generated unique award id from another tool and want to get details on that specific award
     - Only use this with award IDs. Generally these award IDs will come from GetSpendingAwardsByAgencyID
 
     Args:
@@ -95,7 +95,6 @@ class KeywordSearchArgs(BaseModel):
 
 
 class KeywordSearchResponse(BaseModel):
-    internal_id: Optional[int]
     description: Optional[str] = Field(alias="Description")
     award_id: Optional[str] = Field(alias="Award ID")
     recipient_name: str = Field(alias="Recipient Name")
