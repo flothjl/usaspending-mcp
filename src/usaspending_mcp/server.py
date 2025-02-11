@@ -53,7 +53,9 @@ async def get_gov_spending_by_fiscal_year(
 
 
 class AwardDetailArgs(BaseModel):
-    generated_unique_award_id: str
+    generated_unique_award_id: str = Field(
+        description="This must be the generated_unique_award_id"
+    )
 
 
 @mcp.tool(name="GetAwardInfoByAwardId")
@@ -88,8 +90,8 @@ async def get_award_info(args: AwardDetailArgs) -> Dict[str, Any] | None:
 
 
 class KeywordSearchArgs(BaseModel):
-    keywords: List[str]
-    year: int
+    keywords: List[str] = Field(description="List of keywords")
+    year: int = Field(description="Year to search")
 
 
 class KeywordSearchResponse(BaseModel):
@@ -104,7 +106,10 @@ class KeywordSearchResponse(BaseModel):
     start_date: Optional[str] = Field(alias="Start Date")
     end_date: Optional[str] = Field(alias="End Date")
     awarding_agency_id: Optional[int] = Field(alias="awarding_agency_id")
-    generated_unique_award_id: Optional[str] = Field(alias="generated_internal_id")
+    generated_unique_award_id: Optional[str] = Field(
+        alias="generated_internal_id",
+        description="Generated Unique Award ID. Can be used with tool GetAwardInfoByAwardId",
+    )
 
 
 @mcp.tool(name="SearchByKeywords")
