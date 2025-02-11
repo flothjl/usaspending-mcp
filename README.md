@@ -9,5 +9,5 @@ and analysis of U.S. government spending data.
 ## usage with [Goose](https://github.com/block/goose)
 
 ```bash
-uvx git+https://github.com/flothjl/usaspending-mcp@main usaspending-mcp
+uvx --from git+https://github.com/flothjl/usaspending-mcp@main usaspending-mcp
 ```
