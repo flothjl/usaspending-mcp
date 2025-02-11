@@ -8,7 +8,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.shared.exceptions import McpError
 from pydantic import BaseModel, Field
 
-from util import async_http_get, async_http_post
+from usaspending_mcp.util import async_http_get, async_http_post
 
 mcp = FastMCP("usaspending")
 

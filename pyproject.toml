@@ -1,7 +1,15 @@
 [project]
 name = "usaspending-mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "An MCP server to help agents interact with USASpending.gov api"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["httpx>=0.28.1", "mcp[cli]>=1.2.1", "nostr-sdk>=0.39.0"]
+dependencies = ["httpx>=0.28.1", "mcp[cli]>=1.2.1"]
+authors = [{ name = "Josh Floth", email = "flothjldev@proton.me" }]
+
+[project.scripts]
+usaspending-mcp = "usaspending_mcp:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

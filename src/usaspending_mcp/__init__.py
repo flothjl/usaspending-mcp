@@ -1,6 +1,6 @@
 import argparse
 
-from .server import mcp
+from usaspending_mcp.server import mcp
 
 
 def main():
