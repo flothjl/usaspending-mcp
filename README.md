@@ -11,3 +11,14 @@ and analysis of U.S. government spending data.
 ```bash
 uvx --from git+https://github.com/flothjl/usaspending-mcp@main usaspending-mcp
 ```
+
+### Tools
+
+- **GetSpendingAwardsByAgencyId**
+  - Search for awards for a given agency id for a given year
+- **GetAwardInfoByAwardId**
+  - Get information about a given award. Requires the generated unique award ID.
+- **SearchByKeywords**
+  - Broad search for given keywords for a given year.
+- **GetAgencies**
+  - Get a list of all agencies and associated data needed for other calls (i.e. agency id)
