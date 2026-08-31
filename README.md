@@ -1,3 +1,5 @@
+
+
 # usaspending-mcp
 
 **usaspending-mcp** is an MCP (Modular Computing Platform) server designed
@@ -10,7 +12,7 @@ and analysis of U.S. government spending data.
 
 - **GetSpendingAwardsByAgencyId**
   - Search for awards for a given agency id for a given year
-- **GetAwardInfoByAwardId**
+- **GetAwardInfoByGeneratedUniqueAwardId**
   - Get information about a given award. Requires the generated unique award ID.
 - **SearchByKeywords**
   - Broad search for given keywords for a given year.
